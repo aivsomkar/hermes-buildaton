@@ -134,7 +134,14 @@ You are the Hermes director-producer for LaunchReel. Produce a finished software
 ## Inputs already gathered for you
 - \`capture/screenshots/\` — real product UI screenshots (scroll order). The real UI is the star of the film.
 - \`capture/extracted/tokens.json\` — page title, description, headings, brand colors, fonts. \`capture/assets/\` has downloaded brand assets.
-- \`analysis/BREAKDOWN.md\`, \`analysis/style-brief.md\`, \`analysis/beats.json\`, \`analysis/contact-sheet.png\` — frame-by-frame deconstruction of the client's inspiration video (arc: ${beats.arc ?? "unknown"}, ${beats.meta?.duration ?? "?"}s). Transfer its structure and pacing, never its words, footage, or branding.
+- \`analysis/BREAKDOWN.md\`, \`analysis/style-brief.md\`, \`analysis/beats.json\`, \`analysis/contact-sheet.png\`, \`analysis/keyframes/\` — frame-by-frame deconstruction of the client's inspiration video (arc: ${beats.arc ?? "unknown"}, ${beats.meta?.duration ?? "?"}s). Transfer its structure and pacing, never its words, footage, or branding.
+
+## Phase 0 — REQUIRED style ledger (do this before any planning)
+The mechanical breakdown cannot SEE. You can. Open and LOOK at \`analysis/contact-sheet.png\` (and keyframes for the Hook, mid-film, and CTA beats), then write \`analysis/style-ledger.md\` describing the reference's visual language strictly in this closed vocabulary:
+- **Shot blueprints** (what each act uses): kinetic-type-beats, typewriter-reveal, cursor-ui-demo, device-surface-showcase, dataviz-countup, logo-assemble-lockup, grid-card-assemble, constellation-hub, comparison-split, titlecard-reveal, spatial-pan-stations.
+- **Motion moves** (name the 3-5 signature moves you observe): word-swap, per-word stagger, kinetic beat-slam, type-on with caret, value-scaled counter, SVG self-draw, push camera, focus camera, drift camera, zoom-to-target, cursor tracking, mask wipe, cascade reveal, count-up.
+- **Palette** (base + accent hexes as observed), **type style** (weight/case/density), **text-on-screen density** (words per beat), **transition grammar** (hard cut / mask wipe / camera push...).
+Your scene plan and composition MUST then map every scene to a blueprint + motion moves from this ledger, executed in the CLIENT's brand colors (never the reference's). This ledger is how the client's "make it feel like my inspiration video" promise is kept.
 - Research summary: headline "${research.headline}"; tagline "${research.tagline}"; features: ${research.features.join(" | ") || "see tokens.json"}; brand base ${research.colors.base}, accent ${research.colors.accent}.${research.context ? `\n- Company context: ${research.context}` : ""}
 
 ## Workflow (STRICT ORDER — AI shots come first, then the edit)
