@@ -4,7 +4,7 @@ import { createUploadPolicy, validateUploadPath } from "../apps/api/src/upload-p
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
-  const token = process.env.SOURCE_BLOB_READ_WRITE_TOKEN;
+  const token = process.env.SOURCE_BLOB_READ_WRITE_TOKEN ?? process.env.BLOB_READ_WRITE_TOKEN;
   if (!token) return response.status(503).json({ error: "Source storage is not configured" });
 
   try {

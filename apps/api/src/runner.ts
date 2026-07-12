@@ -7,7 +7,7 @@ import {
   buildStoryboard, lockTimings, pickVoice, renderComposition, scriptMarkdown, storyboardFromPlan, synthesizeVoiceover,
   type CompositionInput, type ReferenceBeats,
 } from "./compose.js";
-import { directCreativePlan } from "./director.js";
+import { directCreativePlan, hermesProduce } from "./director.js";
 import { generateHookClip, type HookBrief } from "./generate.js";
 import type { JobStage, LaunchJob } from "./types.js";
 
@@ -21,10 +21,10 @@ const ROOT = resolve(process.cwd(), process.cwd().endsWith("apps/api") ? "../.."
 const RUNS = join(ROOT, "runs");
 const DECONSTRUCTOR = join(ROOT, "packages/video-deconstruct/src/deconstruct.py");
 
-function exec(command: string, args: string[], timeoutMs = 240_000): Promise<{ stdout: string; stderr: string }> {
+function exec(command: string, args: string[], timeoutMs = 240_000, cwd?: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolvePromise, reject) => {
     const detached = process.platform !== "win32";
-    const child = spawn(command, args, { cwd: ROOT, env: process.env, detached });
+    const child = spawn(command, args, { cwd: cwd ?? ROOT, env: process.env, detached });
     let stdout = "";
     let stderr = "";
     let timedOut = false;
@@ -153,6 +153,26 @@ export async function runJob(job: LaunchJob, store: JobSink): Promise<void> {
     } catch {
       // Beats are advisory; the storyboard has its own defaults.
     }
+    // DIRECTOR_MODE=full → Hermes owns the whole production: it reads the
+    // capture + breakdown and drives HyperFrames/Lumenfall/TTS itself.
+    if ((process.env.DIRECTOR_MODE ?? "full").toLowerCase() === "full") {
+      await store.transition(job, "rendering", "Hermes is producing the film end-to-end: script, shots, narration, composition, render");
+      const produced = await hermesProduce(
+        { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl, attemptDir },
+        exec,
+        log,
+      );
+      if (produced) {
+        for (const [key, file] of [["script", "SCRIPT.md"], ["video", "launchreel.mp4"]] as const) {
+          job.artifacts[key] = artifactUrl(job.id, `${attemptName}/${file}`);
+        }
+        await store.transition(job, "completed", "Hermes director delivered and verified the film");
+        return;
+      }
+      log("Full Hermes production did not deliver; falling back to the plan-mode pipeline");
+      await store.transition(job, "writing_script", "Falling back to the plan-directed pipeline");
+    }
+
     const plan = await directCreativePlan(
       { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl },
       exec,

@@ -109,8 +109,7 @@ function App() {
       if (!videoFile) throw new Error('Choose an inspiration video from this Mac')
       if (convex) {
         const blob = await upload(uploadPath(videoFile), videoFile, {
-          // Single public Blob store: uploads live at unguessable random-suffixed URLs.
-          access: 'public',
+          access: 'private',
           handleUploadUrl: '/api/blob-upload',
           multipart: true,
         })

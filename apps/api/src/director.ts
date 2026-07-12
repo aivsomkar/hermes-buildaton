@@ -115,6 +115,82 @@ function extractJson(text: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+export interface ProduceInputs extends DirectorInputs {
+  attemptDir: string;
+}
+
+function productionBrief(inputs: ProduceInputs): string {
+  const { research, beats, format, productUrl } = inputs;
+  const dims = format === "portrait" ? "1080x1920 (9:16)" : "1920x1080 (16:9)";
+  return `# LaunchReel production brief
+
+You are the Hermes director-producer for LaunchReel. Produce a finished software launch film for **${research.title}** (${productUrl}) in THIS directory, end to end, autonomously. You own script, storyboard, shot plan, treatments, and the render.
+
+## Output contract (all paths relative to this directory)
+- \`launchreel.mp4\` — the film. ${dims}, H.264 + AAC audio, 28-45 seconds. THIS FILE IS THE DELIVERABLE; the job fails without it.
+- \`SCRIPT.md\` — timeline table: time range, scene, voiceover line, on-screen text.
+- \`creative-plan.json\` — your concept, narrator choice, scene list, and shot plan.
+
+## Inputs already gathered for you
+- \`capture/screenshots/\` — real product UI screenshots (scroll order). The real UI is the star of the film.
+- \`capture/extracted/tokens.json\` — page title, description, headings, brand colors, fonts. \`capture/assets/\` has downloaded brand assets.
+- \`analysis/BREAKDOWN.md\`, \`analysis/style-brief.md\`, \`analysis/beats.json\`, \`analysis/contact-sheet.png\` — frame-by-frame deconstruction of the client's inspiration video (arc: ${beats.arc ?? "unknown"}, ${beats.meta?.duration ?? "?"}s). Transfer its structure and pacing, never its words, footage, or branding.
+- Research summary: headline "${research.headline}"; tagline "${research.tagline}"; features: ${research.features.join(" | ") || "see tokens.json"}; brand base ${research.colors.base}, accent ${research.colors.accent}.${research.context ? `\n- Company context: ${research.context}` : ""}
+
+## Tools available
+- **HyperFrames** (primary renderer): \`npx hyperframes init <dir>\`, author \`index.html\` composition (GSAP timeline, data-start/data-duration/data-track-index clips), \`npx hyperframes check <dir>\`, \`npx hyperframes render <dir> -o launchreel.mp4 --quality standard\`. Reference skills live in ~/.claude/skills/hyperframes-core (composition contract) and hyperframes-animation.
+- **Lumenfall** (AI shots, optional): \`curl -X POST https://api.lumenfall.ai/openai/v1/videos -H "Authorization: Bearer $LUMENFALL_API_KEY" -H "content-type: application/json" -d '{"model":"...","prompt":"...","seconds":"4","aspect_ratio":"${format === "portrait" ? "9:16" : "16:9"}"}'\` then poll \`GET /videos/<id>\` until completed and download output.url. Models: kling-v3, veo-3.1-fast, sora-2, pixverse-v5.6, veo-3.1-lite. HARD BUDGET: $2.50 total. Prompts must be wordless (no text/logos/people). Use at most 1-2 shots as garnish; UI scenes carry the film.
+- **Voiceover**: \`npx hyperframes tts "line" -o vo.wav -v af_heart\` (voices: af_heart, af_nova, am_adam, am_michael, bm_george — always works, use per-scene files). ELEVENLABS_API_KEY / GEMINI_API_KEY exist in env but may be out of credits — fall back to local TTS on any error.
+- **ffmpeg / ffprobe** for any assembly or probing.
+
+## Quality bar (check before declaring done)
+1. First 5 seconds make a concrete promise or expose a concrete pain.
+2. Every product claim is supported by the captured site copy.
+3. Real product UI appears prominently (screenshots with motion — pan/zoom in framed cards).
+4. Reference structure recognizable; zero reused reference content.
+5. On-screen text readable without sound; nothing overlaps or clips.
+6. CTA shows the correct product name and domain.
+7. \`ffprobe launchreel.mp4\` shows video + audio streams and 28-45s duration.
+
+Work autonomously. Do not ask questions. Finish only when launchreel.mp4 passes the checklist.`;
+}
+
+/**
+ * DIRECTOR_MODE=full — Hermes produces the film end-to-end with its own tool
+ * calls (HyperFrames, Lumenfall, TTS). Returns the MP4 path, or null so the
+ * caller can fall back to the plan-mode pipeline.
+ */
+export async function hermesProduce(
+  inputs: ProduceInputs,
+  exec: (command: string, args: string[], timeoutMs?: number, cwd?: string) => Promise<{ stdout: string; stderr: string }>,
+  log: (message: string) => void,
+): Promise<string | null> {
+  const { writeFile, stat } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  const brief = productionBrief(inputs);
+  await writeFile(join(inputs.attemptDir, "PRODUCTION.md"), brief);
+  const override = process.env.DIRECTOR_CMD?.trim().split(/\s+/);
+  const prompt = "Read PRODUCTION.md in the current directory and execute it completely. Produce launchreel.mp4 here. Work autonomously until the output contract and quality bar are met.";
+  const candidates: string[][] = override?.length
+    ? [[...override, prompt]]
+    : [["hermes", "-z", prompt, "--yolo"], ["claude", "-p", prompt, "--dangerously-skip-permissions"]];
+  for (const [command, ...args] of candidates) {
+    if (!command) continue;
+    try {
+      log(`Hermes producer (${command}) is making the film end-to-end`);
+      await exec(command, args, 25 * 60_000, inputs.attemptDir);
+      const output = join(inputs.attemptDir, "launchreel.mp4");
+      const info = await stat(output);
+      if (info.size < 100_000) throw new Error("Output MP4 is implausibly small");
+      log(`Hermes producer delivered launchreel.mp4 (${(info.size / 1e6).toFixed(1)} MB)`);
+      return output;
+    } catch (error) {
+      log(`Producer ${command} did not deliver (${error instanceof Error ? error.message.slice(0, 200) : error})`);
+    }
+  }
+  return null;
+}
+
 /**
  * Hermes is the creative director. DIRECTOR_CMD overrides the runtime
  * (e.g. "claude -p"); DIRECTOR=off disables direction entirely and the

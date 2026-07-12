@@ -61,9 +61,12 @@ async function downloadInspiration(pathname: string, target: string): Promise<vo
   await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream), createWriteStream(target));
 }
 
-/** Upload the job's local artifacts to the public output store; returns public URLs. */
+/**
+ * Upload the job's local artifacts to the (private) Blob store and hand back
+ * stable Convex `/artifact` links that sign a fresh download URL per view.
+ */
 async function publishArtifacts(job: LaunchJob): Promise<Record<string, string>> {
-  const token = process.env.OUTPUT_BLOB_READ_WRITE_TOKEN;
+  const token = process.env.OUTPUT_BLOB_READ_WRITE_TOKEN ?? process.env.SOURCE_BLOB_READ_WRITE_TOKEN;
   const published: Record<string, string> = {};
   if (!token) return published;
   for (const [key, localUrl] of Object.entries(job.artifacts)) {
@@ -72,11 +75,11 @@ async function publishArtifacts(job: LaunchJob): Promise<Record<string, string>>
     try {
       const data = await readFile(file);
       const blob = await put(`outputs/${job.id}/${key}-${file.split("/").pop()}`, data, {
-        access: "public",
+        access: "private",
         token,
         addRandomSuffix: true,
       });
-      published[key] = blob.url;
+      published[key] = `${SITE}/artifact?p=${encodeURIComponent(blob.pathname)}`;
     } catch (error) {
       process.stderr.write(`[worker] Could not publish artifact ${key}: ${error instanceof Error ? error.message : error}\n`);
     }

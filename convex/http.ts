@@ -68,6 +68,32 @@ http.route({
   }),
 });
 
+// Private-store artifacts get a stable public link: this route signs a fresh
+// download URL per request. Only worker-produced paths are ever exposed.
+http.route({
+  path: "/artifact",
+  method: "GET",
+  handler: httpAction(async (_ctx, request) => {
+    const token = process.env.OUTPUT_BLOB_READ_WRITE_TOKEN;
+    if (!token) return json({ error: "Artifact storage is not configured" }, 503);
+    const pathname = new URL(request.url).searchParams.get("p") ?? "";
+    if (!pathname.startsWith("outputs/") || pathname.includes("..")) {
+      return json({ error: "Invalid artifact path" }, 400);
+    }
+    try {
+      const { issueSignedToken, presignUrl } = await import("@vercel/blob");
+      const signed = await issueSignedToken({ token, pathname, operations: ["get"] });
+      const { presignedUrl } = await presignUrl(signed, { operation: "get", pathname, access: "private" });
+      return new Response(null, {
+        status: 302,
+        headers: { location: presignedUrl, "cache-control": "no-store" },
+      });
+    } catch {
+      return json({ error: "Artifact not found" }, 404);
+    }
+  }),
+});
+
 http.route({
   path: "/webhooks/dodo",
   method: "POST",
