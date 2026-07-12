@@ -1,6 +1,31 @@
 # LaunchReel
 
-LaunchReel is an AI launch-video pipeline for software teams. The current local MVP accepts a product URL plus an uploaded inspiration video, deconstructs the reference, creates style and script artifacts, and renders a verified 12-second title-card preview. The real-UI HyperFrames renderer is the next adapter.
+LaunchReel is an AI launch-video agency for software teams: paste a product URL plus an inspiration video, and an agent crew researches the product, deconstructs the reference frame by frame, writes the script and storyboard, and renders a 30–45s launch film starring the product's **real UI** — narrated, brand-colored, with an AI-generated cinematic hook shot.
+
+## Architecture
+
+```
+New Convex job
+      ↓
+Render worker claims job (lease + heartbeat)
+      ↓
+Hermes Director (hermes -z · fallback: claude -p · fallback: deterministic storyboard)
+      ├── analyzes product capture (hyperframes capture: screenshots, tokens, copy)
+      ├── interprets reference breakdown (video-deconstruct: beats, arc, pacing)
+      ├── creates script and storyboard (validated creative-plan JSON)
+      ├── chooses visual treatments and narrator style
+      ├── plans Lumenfall shots (model auto-selected, $2.50 cap)
+      └── directs the HyperFrames composition
+      ↓
+Deterministic renderer executes the plan
+  (VO: ElevenLabs → Gemini → Kokoro · hook renders in parallel with narration)
+      ↓
+Final MP4 → Vercel Blob → job completed
+```
+
+Division of labor: **Hermes** reasons and directs; **Convex** owns queues, durable state, progress, retries, leases, webhooks; the **worker** executes commands and renders media; **HyperFrames** creates the composition; **Lumenfall** generates selected shots; **ElevenLabs/Gemini/Kokoro** create narration; **Vercel Blob** stores source and output media. The same pipeline also runs fully locally behind the Fastify API (`npm run dev`) with `data/jobs.json` as the store.
+
+Run the production worker: `npm run worker -w @launchreel/api` (needs `CONVEX_SITE_URL`, `WORKER_SHARED_SECRET`, blob tokens — see [KEYS.md](KEYS.md)).
 
 ## Run locally
 
