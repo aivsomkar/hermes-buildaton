@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@500;700&family=Manrope:wght@400;600;700&display=swap');
+
+:root {
+  font-family: 'Manrope', sans-serif;
+  color: oklch(0.205 0.018 55);
+  background: oklch(0.965 0.012 80);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --canvas: oklch(0.965 0.012 80);
+  --ink: oklch(0.205 0.018 55);
+  --muted: oklch(0.47 0.025 60);
+  --signal: oklch(0.64 0.205 35);
+  --signal-dark: oklch(0.49 0.17 32);
+  --rule: oklch(0.82 0.018 70);
+  --success: oklch(0.57 0.13 145);
+  --error: oklch(0.52 0.19 25);
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--canvas); }
+button, input { font: inherit; }
+button, a, input { -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid oklch(0.72 0.16 35); outline-offset: 3px; }
+::selection { background: var(--signal); color: var(--canvas); }

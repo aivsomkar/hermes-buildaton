@@ -1,0 +1,21 @@
+{
+  "name": "launchreel",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c orange,blue \"npm run dev -w @launchreel/api\" \"npm run dev -w web\"",
+    "build": "npm run build -w @launchreel/api && npm run build -w web",
+    "test": "npm run test -w @launchreel/api && python3 -m unittest discover -s packages/video-deconstruct/tests -v",
+    "start": "npm run start -w @launchreel/api",
+    "convex:dev": "npx convex dev",
+    "convex:deploy": "npx convex deploy",
+    "vercel:build": "npx convex deploy --cmd \"npm run build -w web\""
+  },
+  "devDependencies": {
+    "@vercel/node": "^5.8.23",
+    "concurrently": "^9.2.1"
+  }
+}

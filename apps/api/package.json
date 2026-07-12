@@ -1,0 +1,27 @@
+{
+  "name": "@launchreel/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "tsx --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/multipart": "^9.4.0",
+    "@fastify/static": "^9.0.0",
+    "@vercel/blob": "^2.6.1",
+    "convex": "^1.42.1",
+    "dodopayments": "^2.42.2",
+    "fastify": "^5.8.2",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.2"
+  }
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+data/jobs.json
+data/uploads/
+runs/
+assets/reference-videos/
+vendor/
+apps/web/dist/
+coverage/
+videos/
