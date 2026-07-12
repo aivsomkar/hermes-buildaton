@@ -1,4 +1,3 @@
-import { head } from "@vercel/blob";
 import { put } from "@vercel/blob";
 import { createWriteStream } from "node:fs";
 import { mkdir, readFile } from "node:fs/promises";
@@ -55,8 +54,11 @@ async function convex<T>(path: string, body: Record<string, unknown>): Promise<T
 async function downloadInspiration(pathname: string, target: string): Promise<void> {
   const token = process.env.SOURCE_BLOB_READ_WRITE_TOKEN;
   if (!token) throw new Error("SOURCE_BLOB_READ_WRITE_TOKEN is required to fetch inspiration uploads");
-  const blob = await head(pathname, { token });
-  const response = await fetch(blob.downloadUrl ?? blob.url);
+  // The store is private: reads require a presigned GET URL.
+  const { issueSignedToken, presignUrl } = await import("@vercel/blob");
+  const signed = await issueSignedToken({ token, pathname, operations: ["get"] });
+  const { presignedUrl } = await presignUrl(signed, { operation: "get", pathname, access: "private" });
+  const response = await fetch(presignedUrl);
   if (!response.ok || !response.body) throw new Error(`Inspiration download failed (${response.status})`);
   await pipeline(Readable.fromWeb(response.body as import("node:stream/web").ReadableStream), createWriteStream(target));
 }
