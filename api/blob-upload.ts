@@ -1,6 +1,17 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { createUploadPolicy, validateUploadPath } from "../apps/api/src/upload-policy.js";
+
+// Inlined upload policy: this function must stay self-contained — importing from
+// apps/api (an ESM package) crashes the CJS-compiled function at runtime.
+const ALLOWED_CONTENT_TYPES = ["video/mp4", "video/quicktime", "video/webm"];
+const MAX_BYTES = 200 * 1024 * 1024;
+
+function validateUploadPath(pathname: string): void {
+  const name = pathname.startsWith("inspirations/") ? pathname.slice("inspirations/".length) : null;
+  if (!name || name.includes("/") || name.includes("\\") || name.includes("..") || !/\.(mp4|mov|webm)$/i.test(name)) {
+    throw new Error("Invalid upload path");
+  }
+}
 
 export default async function handler(request: VercelRequest, response: VercelResponse) {
   if (request.method !== "POST") return response.status(405).json({ error: "Method not allowed" });
@@ -14,10 +25,16 @@ export default async function handler(request: VercelRequest, response: VercelRe
       token,
       onBeforeGenerateToken: async (pathname) => {
         validateUploadPath(pathname);
-        return createUploadPolicy();
+        return {
+          access: "private",
+          allowedContentTypes: ALLOWED_CONTENT_TYPES,
+          maximumSizeInBytes: MAX_BYTES,
+          addRandomSuffix: true,
+          allowOverwrite: false,
+        };
       },
       onUploadCompleted: async () => {
-        // Job creation records the returned Blob URL. Orphan cleanup is handled separately.
+        // Job creation records the returned Blob pathname; orphan cleanup is separate.
       },
     });
     return response.status(200).json(result);
