@@ -1,0 +1,109 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - link "LaunchReel home" [ref=e5] [cursor=pointer]:
+      - /url: "#top"
+      - text: LAUNCHREEL●
+    - paragraph [ref=e6]: Local launch-video pipeline
+    - generic [ref=e7]: HERMES CREW ONLINE
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - paragraph [ref=e11]: URL IN. REFERENCE IN. PREVIEW OUT.
+      - heading [level=1] [ref=e12]:
+        - text: Your product.
+        - strong [ref=e13]: Your taste.
+        - text: One local preview.
+      - paragraph [ref=e14]: Give the local agent crew your product URL and an inspiration-video upload. It maps the reference and renders a new 12-second pipeline preview.
+    - complementary "How it works" [ref=e15]:
+      - generic [ref=e16]: 01 / CREATIVE BRIEF
+      - paragraph [ref=e17]: Reference structure becomes a style prior. Source footage and brand assets are never reused.
+      - generic [ref=e18]: 12 SECTITLE CARDSMP4 + SCRIPT
+  - region "Start a production" [ref=e21]:
+    - generic [ref=e22]:
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - paragraph [ref=e25]: NEW PRODUCTION
+          - heading "Set the source material." [level=2] [ref=e26]
+        - generic [ref=e27]: TAKE 001
+      - generic [ref=e28]:
+        - generic [ref=e29]: "01"
+        - generic [ref=e30]:
+          - generic [ref=e31]: Product URL
+          - generic [ref=e32]: Used locally to identify the product; the page is not fetched yet.
+          - textbox "01 Product URL Used locally to identify the product; the page is not fetched yet." [ref=e33]:
+            - /placeholder: https://yourproduct.com
+      - generic [ref=e34]:
+        - generic [ref=e35]: "02"
+        - generic [ref=e36]:
+          - generic [ref=e37]: Inspiration video
+          - generic [ref=e38]: Upload an MP4, MOV, or WebM. Max 3 minutes and 200 MB.
+          - generic [ref=e39] [cursor=pointer]:
+            - button "Choose an MP4 from this Mac BROWSE"
+            - generic [ref=e40]: Choose an MP4 from this Mac
+            - generic [ref=e41]: BROWSE
+      - group "FORMAT" [ref=e42]:
+        - generic [ref=e44] [cursor=pointer]:
+          - radio "16:9 Landscape" [checked] [ref=e45]
+          - text: 16:9 Landscape
+        - generic [ref=e46] [cursor=pointer]:
+          - radio "9:16 Vertical" [ref=e47]
+          - text: 9:16 Vertical
+      - button "CREATE THE LOCAL PREVIEW ↗" [ref=e48] [cursor=pointer]:
+        - generic [ref=e49]: CREATE THE LOCAL PREVIEW
+        - generic [ref=e50]: ↗
+    - generic [ref=e51]:
+      - generic [ref=e52]:
+        - paragraph [ref=e53]: LIVE PRODUCTION
+        - generic [ref=e54]: WAITING FOR BRIEF
+      - list [ref=e55]:
+        - listitem [ref=e56]:
+          - generic [ref=e57]: "01"
+          - generic [ref=e58]:
+            - generic [ref=e59]: Researcher
+            - generic [ref=e60]: Identify the product
+          - time [ref=e61]: NEXT
+        - listitem [ref=e62]:
+          - generic [ref=e63]: "02"
+          - generic [ref=e64]:
+            - generic [ref=e65]: Style analyst
+            - generic [ref=e66]: Map the reference
+          - time [ref=e67]: NEXT
+        - listitem [ref=e68]:
+          - generic [ref=e69]: "03"
+          - generic [ref=e70]:
+            - generic [ref=e71]: Scriptwriter
+            - generic [ref=e72]: Build the story
+          - time [ref=e73]: NEXT
+        - listitem [ref=e74]:
+          - generic [ref=e75]: "04"
+          - generic [ref=e76]:
+            - generic [ref=e77]: Video producer
+            - generic [ref=e78]: Render the preview
+          - time [ref=e79]: NEXT
+        - listitem [ref=e80]:
+          - generic [ref=e81]: "05"
+          - generic [ref=e82]:
+            - generic [ref=e83]: Director
+            - generic [ref=e84]: Package artifacts
+          - time [ref=e85]: NEXT
+      - generic [ref=e86]:
+        - generic [ref=e87]: ◉
+        - paragraph [ref=e88]: The crew appears here as soon as the brief lands.
+  - generic [ref=e89]:
+    - paragraph [ref=e90]: THE HANDOFF CHAIN
+    - generic [ref=e91]:
+      - generic [ref=e92]:
+        - generic [ref=e93]: "01"
+        - text: Identify the product
+      - generic [ref=e94]: →
+      - generic [ref=e95]:
+        - generic [ref=e96]: "02"
+        - text: Deconstruct the taste
+      - generic [ref=e97]: →
+      - generic [ref=e98]:
+        - generic [ref=e99]: "03"
+        - text: Write to the beats
+      - generic [ref=e100]: →
+      - generic [ref=e101]:
+        - generic [ref=e102]: "04"
+        - text: Render a title-card preview
+    - paragraph [ref=e103]: We transfer structure, timing, and motion grammar. We never reuse the reference footage, audio, copy, or brand assets.

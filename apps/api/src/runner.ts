@@ -7,6 +7,7 @@ import {
   buildStoryboard, lockTimings, pickVoice, renderComposition, scriptMarkdown, storyboardFromPlan, synthesizeVoiceover,
   type CompositionInput, type ReferenceBeats,
 } from "./compose.js";
+import { buildBeatMap, checkConformance, type FullBeats } from "./beatmap.js";
 import { directCreativePlan, hermesProduce } from "./director.js";
 import { generateHookClip, type HookBrief } from "./generate.js";
 import type { JobStage, LaunchJob } from "./types.js";
@@ -147,22 +148,42 @@ export async function runJob(job: LaunchJob, store: JobSink): Promise<void> {
 
     await store.transition(job, "writing_script", "Hermes director is planning the film: script, storyboard, shots, treatments");
     const styleBrief = await readFile(join(analysisDir, "style-brief.md"), "utf8").catch(() => "");
-    let beats: ReferenceBeats & { transcript?: string } = {};
+    let beats: FullBeats & { transcript?: string } = {};
     try {
-      beats = JSON.parse(await readFile(join(analysisDir, "beats.json"), "utf8")) as ReferenceBeats & { transcript?: string };
+      beats = JSON.parse(await readFile(join(analysisDir, "beats.json"), "utf8")) as FullBeats & { transcript?: string };
     } catch {
       // Beats are advisory; the storyboard has its own defaults.
+    }
+    const beatMap = buildBeatMap(beats);
+    if (beatMap) {
+      await writeFile(join(analysisDir, "beat-map.json"), JSON.stringify(beatMap, null, 2));
+      log(`Beat map locked: ${beatMap.acts.length} acts over ${beatMap.targetSeconds}s (ref ${beatMap.referenceSeconds}s, peak pace in third ${beatMap.paceRankByThird[0] ?? "?"})`);
     }
     // DIRECTOR_MODE=full → Hermes owns the whole production: it reads the
     // capture + breakdown and drives HyperFrames/Lumenfall/TTS itself.
     if ((process.env.DIRECTOR_MODE ?? "full").toLowerCase() === "full") {
       await store.transition(job, "rendering", "Hermes is producing the film end-to-end: script, shots, narration, composition, render");
       const produced = await hermesProduce(
-        { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl, attemptDir },
+        { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl, attemptDir, beatMap },
         exec,
         log,
       );
       if (produced) {
+        if (beatMap) {
+          try {
+            const conformanceDir = join(attemptDir, "conformance");
+            await exec("python3", [DECONSTRUCTOR, produced, "--out", conformanceDir, "--fast", "--skip-transcript"], 120_000);
+            const outputBeats = JSON.parse(await readFile(join(conformanceDir, "beats.json"), "utf8")) as FullBeats;
+            const conformance = checkConformance(beatMap, outputBeats);
+            await writeFile(join(attemptDir, "conformance.md"),
+              `# Reference conformance\n\n- Output: ${conformance.outputSeconds}s, cuts/sec by third: ${conformance.outputCutsByThird.join(", ")}\n- Target: ${beatMap.targetSeconds}s, reference cuts/sec by third: ${beatMap.cutsPerSecondByThird.join(", ")}\n- Verdict: ${conformance.ok ? "CONFORMS" : "DEVIATIONS FOUND"}\n${conformance.notes.map((n) => `- ${n}`).join("\n")}\n`);
+            log(conformance.ok
+              ? "Conformance check: output pacing matches the reference structure"
+              : `Conformance check found deviations: ${conformance.notes.join(" | ")}`);
+          } catch (error) {
+            log(`Conformance check skipped (${error instanceof Error ? error.message : error})`);
+          }
+        }
         for (const [key, file] of [["script", "SCRIPT.md"], ["video", "launchreel.mp4"]] as const) {
           job.artifacts[key] = artifactUrl(job.id, `${attemptName}/${file}`);
         }
@@ -174,7 +195,7 @@ export async function runJob(job: LaunchJob, store: JobSink): Promise<void> {
     }
 
     const plan = await directCreativePlan(
-      { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl },
+      { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl, beatMap },
       exec,
       log,
     );

@@ -69,6 +69,7 @@ export interface DirectorInputs {
   transcript: string;
   format: JobFormat;
   productUrl: string;
+  beatMap?: import("./beatmap.js").BeatMap | null;
 }
 
 export function buildDirectorPrompt(inputs: DirectorInputs): string {
@@ -99,7 +100,8 @@ ${styleBrief.slice(0, 900)}
 - Transfer the reference's structure and pacing, never its words, footage, or branding.
 - Scene kinds available to you: "hook" (AI b-roll or gradient + big headline), "promise" (typographic statement card), "ui" (real product screenshot with caption chip — use screenshotIndex), "stack" (3-item feature list; put the 3 items in "sub" separated by " · "), "cta" (closing card with product name + URL pill).
 - First scene must be kind "hook", last must be "cta". Use 2-3 "ui" scenes — the real UI is the star.
-- Total duration 28-45 seconds. Scene seconds between 3 and 8.
+- Total duration 28-45 seconds. Scene seconds between 3 and 8.${inputs.beatMap ? `
+- STRUCTURE CONTRACT: follow the reference beat map act-for-act, in order, each within ±15% of its length: ${inputs.beatMap.acts.map((act) => `${act.role}@${act.targetSeconds}s`).join(" → ")}. The reference cuts fastest in third ${inputs.beatMap.paceRankByThird[0] ?? "?"} — your scene density must peak there too.` : ""}
 - lumenfallShots: at most 1, for the hook scene — a wordless cinematic AI-video prompt (explicitly say: no on-screen text, no logos, no people) that matches the brand colors and product mood. Optional modelHint: one of kling-v3, veo-3.1-fast, sora-2, pixverse-v5.6, or omit for auto.
 
 ## Output
@@ -117,6 +119,28 @@ function extractJson(text: string): unknown {
 
 export interface ProduceInputs extends DirectorInputs {
   attemptDir: string;
+  beatMap?: import("./beatmap.js").BeatMap | null;
+}
+
+function beatMapContract(beatMap: import("./beatmap.js").BeatMap | null | undefined): string {
+  if (!beatMap) return "";
+  const rows = beatMap.acts
+    .map((act) => `| ${act.targetStart}s | ${act.targetSeconds}s | ${act.role} | ${act.blueprint} | (ref ${act.referenceSpan}) |`)
+    .join("\n");
+  return `
+## BEAT MAP — NON-NEGOTIABLE structure contract
+This is the reference video's measured beat structure, compressed by code onto your ${beatMap.targetSeconds}s runtime. The client chose that reference because of THIS shape. Your scene plan MUST follow it:
+
+| Start | Length | Beat role | Reference blueprint | Source |
+|---|---|---|---|---|
+${rows}
+
+Rules:
+- Same act ORDER, one or more scenes per act, each act's total within ±15% of its length above.
+- Pacing shape: the reference cuts fastest in third ${beatMap.paceRankByThird[0] ?? "?"} (cuts/sec by third: ${beatMap.cutsPerSecondByThird.join(", ")}). Your film's visual-event density must peak in the same third.
+- Use each act's reference blueprint (or a close sibling from the style ledger) as the scene's visual treatment.
+- SCRIPT.md MUST end with a "Reference conformance" table: each scene → beat-map act → blueprint used → motion moves from the style ledger. If a scene maps to nothing in the beat map, cut it or justify it in one line.
+`;
 }
 
 function productionBrief(inputs: ProduceInputs): string {
@@ -139,6 +163,7 @@ You are the Hermes director-producer for LaunchReel. Produce a finished software
 Static screenshots read as screen grabs; REBUILT UI reads as an agency production. For 1-2 hero UI moments, rebuild the interface as LIVE HTML inside the composition instead of an \`<img>\`: reconstruct the key panel/card/table from \`capture/extracted/page.html\` structure using the real tokens (exact colors, fonts, radii from \`tokens.json\`/\`design-styles.json\`) and real assets from \`capture/assets/\`, with realistic fixture text from \`visible-text.txt\` — then ANIMATE it living: cursor drifts and clicks, a row cascades in, a counter ticks up, a toggle flips, a chart draws itself. Follow the hyperframes-core clip contract; keep each rebuild scoped to one focused panel (never the whole page). Use plain screenshots for the remaining UI scenes; if a rebuild looks off-brand or is eating time, fall back to the screenshot treatment — a delivered film always beats a perfect one.
 - \`analysis/BREAKDOWN.md\`, \`analysis/style-brief.md\`, \`analysis/beats.json\`, \`analysis/contact-sheet.png\`, \`analysis/keyframes/\` — frame-by-frame deconstruction of the client's inspiration video (arc: ${beats.arc ?? "unknown"}, ${beats.meta?.duration ?? "?"}s). Transfer its structure and pacing, never its words, footage, or branding.
 
+${beatMapContract(inputs.beatMap)}
 ## Phase 0 — REQUIRED style ledger (do this before any planning)
 The mechanical breakdown cannot SEE. You can. Open and LOOK at \`analysis/contact-sheet.png\` (and keyframes for the Hook, mid-film, and CTA beats), then write \`analysis/style-ledger.md\` describing the reference's visual language strictly in this closed vocabulary:
 - **Shot blueprints** (what each act uses): kinetic-type-beats, typewriter-reveal, cursor-ui-demo, device-surface-showcase, dataviz-countup, logo-assemble-lockup, grid-card-assemble, constellation-hub, comparison-split, titlecard-reveal, spatial-pan-stations.
