@@ -2,6 +2,12 @@ import { spawn } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import sharp from "sharp";
+import { captureProduct, type ProductResearch } from "./capture.js";
+import {
+  buildStoryboard, lockTimings, pickVoice, renderComposition, scriptMarkdown, synthesizeVoiceover,
+  type CompositionInput, type ReferenceBeats,
+} from "./compose.js";
+import { generateHookClip, type HookBrief } from "./generate.js";
 import type { LaunchJob } from "./types.js";
 import { JobStore } from "./store.js";
 
@@ -102,21 +108,24 @@ export async function renderFallback(job: LaunchJob, runDir: string): Promise<st
   return output;
 }
 
-async function writeScript(job: LaunchJob, styleBrief: string, runDir: string): Promise<string> {
-  const script = `# ${job.title ?? "Product"} local pipeline preview\n\n## Card 1 (0–4s)\n${job.title ?? "Your product"} deserves a launch.\n\n## Card 2 (4–8s)\nReal UI. Your taste. One agent crew.\n\n## Card 3 (8–12s)\nLaunchReel: from URL to MP4.\n\n---\n\nThis local MVP validates intake, reference analysis, style priors, scripting, job state, and MP4 delivery. Product capture, narration, captions, and the 30–60 second HyperFrames render are the next adapter.\n\nStyle prior loaded from the reference:\n${styleBrief.slice(0, 1200)}\n`;
-  const file = join(runDir, "SCRIPT.md");
-  await writeFile(file, script);
-  return file;
-}
-
 export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
   const runDir = join(RUNS, job.id);
   const attemptName = `attempt-${Date.now()}`;
   const attemptDir = join(runDir, attemptName);
+  const log = (message: string) => process.stderr.write(`[LaunchReel job ${job.id}] ${message}\n`);
   try {
     await mkdir(attemptDir, { recursive: true });
-    await store.transition(job, "researching", "Researcher is preparing the product identity for the local preview");
-    const research = await researchProduct(job.productUrl);
+
+    await store.transition(job, "researching", "Researcher is capturing the product site, brand tokens, and company context");
+    const research = await captureProduct(job.productUrl, attemptDir, exec).catch(async (error) => {
+      log(`Site capture failed (${error instanceof Error ? error.message : error}); falling back to URL-only identity`);
+      const fallback = await researchProduct(job.productUrl);
+      return {
+        title: fallback.title, headline: fallback.title, tagline: fallback.summary, summary: fallback.summary,
+        features: [], colors: { base: "#15130f", surface: "#f7f2e8", accent: "#ef5b35", foreground: "#f7f2e8" },
+        fonts: [], screenshots: [], context: undefined, captureDir: attemptDir,
+      } satisfies ProductResearch;
+    });
     job.title = research.title;
     job.productSummary = research.summary;
     await store.save(job);
@@ -130,16 +139,61 @@ export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
     job.artifacts.contactSheet = artifactUrl(job.id, `${attemptName}/analysis/contact-sheet.png`);
     await store.save(job);
 
-    await store.transition(job, "writing_script", "Scriptwriter is adapting the story to the product");
-    const styleBrief = await readFile(join(analysisDir, "style-brief.md"), "utf8");
-    await writeScript(job, styleBrief, attemptDir);
+    await store.transition(job, "writing_script", "Scriptwriter is adapting the reference structure to the product story");
+    const styleBrief = await readFile(join(analysisDir, "style-brief.md"), "utf8").catch(() => "");
+    let beats: ReferenceBeats = {};
+    try {
+      beats = JSON.parse(await readFile(join(analysisDir, "beats.json"), "utf8")) as ReferenceBeats;
+    } catch {
+      // Beats are advisory; the storyboard has its own defaults.
+    }
+    const storyboard = buildStoryboard(research, beats, job.format);
+    const compositionInput: CompositionInput = {
+      research,
+      scenes: storyboard.scenes,
+      format: job.format,
+      productUrl: job.productUrl,
+    };
+
+    // The AI hook clip generates while narration and the composition are assembled.
+    const hookBrief: HookBrief = {
+      productTitle: research.title,
+      productSummary: research.context ?? research.summary,
+      styleText: `${styleBrief}\n${storyboard.styleNotes}`,
+      format: job.format,
+      baseColor: research.colors.base,
+      accentColor: research.colors.accent,
+    };
+    const hookPromise = generateHookClip(hookBrief, join(attemptDir, "hook.mp4"), log).catch((error) => {
+      log(`Hook generation crashed (${error instanceof Error ? error.message : error})`);
+      return null;
+    });
+
+    const assetsDir = join(attemptDir, "video-assets");
+    await mkdir(assetsDir, { recursive: true });
+    const narrator = pickVoice(`${styleBrief}\n${research.summary}\n${research.context ?? ""}`, storyboard.fast);
+    await synthesizeVoiceover(storyboard.scenes, assetsDir, exec, log, narrator);
+
+    await writeFile(join(attemptDir, "SCRIPT.md"), scriptMarkdown(compositionInput, storyboard.styleNotes));
     job.artifacts.script = artifactUrl(job.id, `${attemptName}/SCRIPT.md`);
     await store.save(job);
 
-    await store.transition(job, "rendering", "Video producer is rendering the first playable preview");
-    const output = await renderFallback(job, attemptDir);
+    await store.transition(job, "rendering", "Video producer is compositing real UI, narration, and the AI hook shot");
+    compositionInput.hook = await hookPromise;
+    lockTimings(storyboard.scenes, compositionInput.hook);
+    // Re-emit the script with final locked timings.
+    await writeFile(join(attemptDir, "SCRIPT.md"), scriptMarkdown(compositionInput, storyboard.styleNotes));
+
+    let output: string;
+    try {
+      output = join(attemptDir, "launchreel.mp4");
+      await renderComposition(compositionInput, join(attemptDir, "video"), output, exec);
+    } catch (error) {
+      log(`HyperFrames render failed (${error instanceof Error ? error.message : error}); using the title-card fallback`);
+      output = await renderFallback(job, attemptDir);
+    }
     job.artifacts.video = artifactUrl(job.id, `${attemptName}/${basename(output)}`);
-    await store.transition(job, "completed", "Director packaged the verified local pipeline preview");
+    await store.transition(job, "completed", "Director reviewed the render and packaged the deliverables");
   } catch (error) {
     const detail = error instanceof Error ? error.stack ?? error.message : String(error);
     process.stderr.write(`[LaunchReel job ${job.id}] ${detail}\n`);

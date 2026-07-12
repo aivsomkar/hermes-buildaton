@@ -12,6 +12,15 @@ import { JobStore } from "./store.js";
 import type { CreateJobInput } from "./types.js";
 
 const ROOT = resolve(process.cwd(), process.cwd().endsWith("apps/api") ? "../.." : ".");
+try {
+  const env = await import("node:fs/promises").then((fs) => fs.readFile(join(ROOT, ".env"), "utf8"));
+  for (const line of env.split("\n")) {
+    const match = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
+    if (match && match[1] && !(match[1] in process.env)) process.env[match[1]] = match[2] ?? "";
+  }
+} catch {
+  // No .env is fine; the shell environment wins either way.
+}
 const PORT = Number(process.env.PORT ?? 8787);
 const UPLOAD_DIR = join(ROOT, "data/uploads");
 const app = Fastify({ logger: true, bodyLimit: 2 * 1024 * 1024 });
