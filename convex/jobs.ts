@@ -79,10 +79,29 @@ export const retry = mutation({
   },
 });
 
+const ACTIVE_STAGES = ["researching", "analyzing_reference", "writing_script", "rendering"] as const;
+
 export const claim = internalMutation({
   args: { workerId: v.string(), leaseToken: v.string(), now: v.number(), leaseExpiresAt: v.number() },
   handler: async (ctx, args) => {
-    const queued = await ctx.db.query("jobs").withIndex("by_status_createdAt", (q) => q.eq("status", "queued")).order("asc").first();
+    let queued = await ctx.db.query("jobs").withIndex("by_status_createdAt", (q) => q.eq("status", "queued")).order("asc").first();
+    if (!queued) {
+      // Reclaim orphans: active jobs whose worker lease expired (crashed/killed worker).
+      for (const stage of ACTIVE_STAGES) {
+        const orphan = await ctx.db
+          .query("jobs")
+          .withIndex("by_status_leaseExpiresAt", (q) => q.eq("status", stage).lt("leaseExpiresAt", args.now))
+          .first();
+        if (orphan) {
+          await ctx.db.insert("jobEvents", {
+            jobId: orphan._id, stage: "queued",
+            message: "Director reclaimed the job from an expired worker lease", at: args.now,
+          });
+          queued = { ...orphan, attempt: orphan.attempt + 1 };
+          break;
+        }
+      }
+    }
     if (!queued) return null;
     await ctx.db.patch(queued._id, {
       status: "researching",
