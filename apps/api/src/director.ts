@@ -133,7 +133,10 @@ You are the Hermes director-producer for LaunchReel. Produce a finished software
 
 ## Inputs already gathered for you
 - \`capture/screenshots/\` — real product UI screenshots (scroll order). The real UI is the star of the film.
-- \`capture/extracted/tokens.json\` — page title, description, headings, brand colors, fonts. \`capture/assets/\` has downloaded brand assets.
+- \`capture/extracted/\` — \`tokens.json\` (title, description, headings, brand colors, fonts), \`page.html\` (the full rendered page markup), \`design-styles.json\`, \`visible-text.txt\`, \`fonts-manifest.json\`. \`capture/assets/\` has the site's downloaded logos, images, and SVGs.
+
+## Live-HTML UI scenes — the "which agency made this?" move
+Static screenshots read as screen grabs; REBUILT UI reads as an agency production. For 1-2 hero UI moments, rebuild the interface as LIVE HTML inside the composition instead of an \`<img>\`: reconstruct the key panel/card/table from \`capture/extracted/page.html\` structure using the real tokens (exact colors, fonts, radii from \`tokens.json\`/\`design-styles.json\`) and real assets from \`capture/assets/\`, with realistic fixture text from \`visible-text.txt\` — then ANIMATE it living: cursor drifts and clicks, a row cascades in, a counter ticks up, a toggle flips, a chart draws itself. Follow the hyperframes-core clip contract; keep each rebuild scoped to one focused panel (never the whole page). Use plain screenshots for the remaining UI scenes; if a rebuild looks off-brand or is eating time, fall back to the screenshot treatment — a delivered film always beats a perfect one.
 - \`analysis/BREAKDOWN.md\`, \`analysis/style-brief.md\`, \`analysis/beats.json\`, \`analysis/contact-sheet.png\`, \`analysis/keyframes/\` — frame-by-frame deconstruction of the client's inspiration video (arc: ${beats.arc ?? "unknown"}, ${beats.meta?.duration ?? "?"}s). Transfer its structure and pacing, never its words, footage, or branding.
 
 ## Phase 0 — REQUIRED style ledger (do this before any planning)
@@ -163,7 +166,7 @@ You have the HyperFrames skill suite installed natively. LOAD AND FOLLOW your **
 ## Quality bar (check before declaring done)
 1. First 5 seconds make a concrete promise or expose a concrete pain.
 2. Every product claim is supported by the captured site copy.
-3. Real product UI appears prominently (screenshots with motion — pan/zoom in framed cards).
+3. Real product UI appears prominently — at least one LIVE rebuilt-HTML UI scene (animated with cursor/counter/cascade motion) when the capture supports it, plus screenshot scenes with pan/zoom in framed cards.
 4. Reference structure recognizable; zero reused reference content.
 5. On-screen text readable without sound; nothing overlaps or clips.
 6. CTA shows the correct product name and domain.
