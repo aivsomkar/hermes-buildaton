@@ -17,5 +17,9 @@
   "devDependencies": {
     "@vercel/node": "^5.8.23",
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "convex": "^1.42.1",
+    "dodopayments": "^2.42.2"
   }
 }
