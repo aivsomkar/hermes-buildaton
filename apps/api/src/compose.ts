@@ -150,6 +150,36 @@ async function geminiTts(text: string, file: string, voiceName: string, exec: Ex
   return true;
 }
 
+/** Execute a director-authored creative plan as a renderable storyboard. */
+export function storyboardFromPlan(
+  plan: { concept: string; narratorStyle: string; scenes: Array<{ id: string; kind: ScenePlan["kind"]; seconds: number; voLine: string; title?: string; sub?: string; caption?: string; screenshotIndex?: number }> },
+  research: ProductResearch,
+  beats: ReferenceBeats,
+): Storyboard {
+  const clampText = (value: string | undefined, max: number) => value?.replace(/\s+/g, " ").trim().slice(0, max);
+  const scenes: ScenePlan[] = plan.scenes.map((scene) => {
+    const shotIndex = Math.min(Math.max(scene.screenshotIndex ?? 0, 0), Math.max(research.screenshots.length - 1, 0));
+    return {
+      id: scene.id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) || "scene",
+      kind: scene.kind,
+      minSeconds: Math.min(Math.max(scene.seconds, 2.5), 8),
+      seconds: 0,
+      voLine: clampText(scene.voLine, 180) ?? "",
+      title: clampText(scene.title, 120),
+      sub: clampText(scene.sub, 140),
+      caption: clampText(scene.caption, 64),
+      screenshot: scene.kind === "ui" ? research.screenshots[shotIndex] : undefined,
+    };
+  });
+  const cuts = beats.pacing?.cuts_per_sec_by_third ?? [];
+  const avgCuts = cuts.length ? cuts.reduce((a, b) => a + b, 0) / cuts.length : 0.3;
+  return {
+    scenes,
+    styleNotes: `Director concept: ${plan.concept}\nNarrator style: ${plan.narratorStyle}\nReference arc: ${beats.arc ?? "unknown"}; avg cuts/sec ${avgCuts.toFixed(2)}.`,
+    fast: avgCuts > 0.45,
+  };
+}
+
 async function elevenLabsTts(text: string, file: string, voiceId: string): Promise<boolean> {
   const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
   if (!apiKey) return false;

@@ -12,6 +12,10 @@ export interface HookBrief {
   baseColor: string;
   accentColor: string;
   imageUrl?: string;
+  /** Director-authored shot prompt; replaces the default hook prompt. */
+  promptOverride?: string;
+  /** Director's preferred model; tried first, still falls back down the chain. */
+  modelHint?: string;
 }
 
 export interface HookClip {
@@ -47,6 +51,7 @@ export function pickModelChain(brief: HookBrief): string[] {
   };
 
   if (forced && forced !== "auto") add(forced);
+  if (brief.modelHint && brief.modelHint !== "auto") add(brief.modelHint);
   if (brief.imageUrl) add("kling-v3");
   if (/(energetic|fast|hype|social|meme|punchy)/.test(style)) {
     add("pixverse-v5.6");
@@ -65,6 +70,7 @@ export function pickModelChain(brief: HookBrief): string[] {
  * so typography stays crisp and on-brand.
  */
 export function hookPrompt(brief: HookBrief): string {
+  if (brief.promptOverride) return brief.promptOverride;
   const orientation = brief.format === "portrait" ? "vertical 9:16" : "widescreen 16:9";
   if (brief.imageUrl) {
     return [

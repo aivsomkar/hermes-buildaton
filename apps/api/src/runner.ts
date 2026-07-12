@@ -4,12 +4,18 @@ import { basename, join, resolve } from "node:path";
 import sharp from "sharp";
 import { captureProduct, type ProductResearch } from "./capture.js";
 import {
-  buildStoryboard, lockTimings, pickVoice, renderComposition, scriptMarkdown, synthesizeVoiceover,
+  buildStoryboard, lockTimings, pickVoice, renderComposition, scriptMarkdown, storyboardFromPlan, synthesizeVoiceover,
   type CompositionInput, type ReferenceBeats,
 } from "./compose.js";
+import { directCreativePlan } from "./director.js";
 import { generateHookClip, type HookBrief } from "./generate.js";
-import type { LaunchJob } from "./types.js";
-import { JobStore } from "./store.js";
+import type { JobStage, LaunchJob } from "./types.js";
+
+/** Anything that can persist job state — the local JobStore or the Convex-backed sink. */
+export interface JobSink {
+  save(job: LaunchJob): Promise<void>;
+  transition(job: LaunchJob, stage: JobStage, message: string): Promise<void>;
+}
 
 const ROOT = resolve(process.cwd(), process.cwd().endsWith("apps/api") ? "../.." : ".");
 const RUNS = join(ROOT, "runs");
@@ -108,7 +114,7 @@ export async function renderFallback(job: LaunchJob, runDir: string): Promise<st
   return output;
 }
 
-export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
+export async function runJob(job: LaunchJob, store: JobSink): Promise<void> {
   const runDir = join(RUNS, job.id);
   const attemptName = `attempt-${Date.now()}`;
   const attemptDir = join(runDir, attemptName);
@@ -139,15 +145,23 @@ export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
     job.artifacts.contactSheet = artifactUrl(job.id, `${attemptName}/analysis/contact-sheet.png`);
     await store.save(job);
 
-    await store.transition(job, "writing_script", "Scriptwriter is adapting the reference structure to the product story");
+    await store.transition(job, "writing_script", "Hermes director is planning the film: script, storyboard, shots, treatments");
     const styleBrief = await readFile(join(analysisDir, "style-brief.md"), "utf8").catch(() => "");
-    let beats: ReferenceBeats = {};
+    let beats: ReferenceBeats & { transcript?: string } = {};
     try {
-      beats = JSON.parse(await readFile(join(analysisDir, "beats.json"), "utf8")) as ReferenceBeats;
+      beats = JSON.parse(await readFile(join(analysisDir, "beats.json"), "utf8")) as ReferenceBeats & { transcript?: string };
     } catch {
       // Beats are advisory; the storyboard has its own defaults.
     }
-    const storyboard = buildStoryboard(research, beats, job.format);
+    const plan = await directCreativePlan(
+      { research, styleBrief, beats, transcript: beats.transcript ?? "", format: job.format, productUrl: job.productUrl },
+      exec,
+      log,
+    );
+    if (plan) await writeFile(join(attemptDir, "creative-plan.json"), JSON.stringify(plan, null, 2));
+    const storyboard = plan
+      ? storyboardFromPlan(plan, research, beats)
+      : buildStoryboard(research, beats, job.format);
     const compositionInput: CompositionInput = {
       research,
       scenes: storyboard.scenes,
@@ -156,6 +170,7 @@ export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
     };
 
     // The AI hook clip generates while narration and the composition are assembled.
+    const plannedShot = plan?.lumenfallShots[0];
     const hookBrief: HookBrief = {
       productTitle: research.title,
       productSummary: research.context ?? research.summary,
@@ -163,6 +178,8 @@ export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
       format: job.format,
       baseColor: research.colors.base,
       accentColor: research.colors.accent,
+      promptOverride: plannedShot?.prompt,
+      modelHint: plannedShot?.modelHint,
     };
     const hookPromise = generateHookClip(hookBrief, join(attemptDir, "hook.mp4"), log).catch((error) => {
       log(`Hook generation crashed (${error instanceof Error ? error.message : error})`);
@@ -171,7 +188,10 @@ export async function runJob(job: LaunchJob, store: JobStore): Promise<void> {
 
     const assetsDir = join(attemptDir, "video-assets");
     await mkdir(assetsDir, { recursive: true });
-    const narrator = pickVoice(`${styleBrief}\n${research.summary}\n${research.context ?? ""}`, storyboard.fast);
+    const narrator = pickVoice(
+      `${plan?.narratorStyle ?? ""}\n${styleBrief}\n${research.summary}\n${research.context ?? ""}`,
+      storyboard.fast,
+    );
     await synthesizeVoiceover(storyboard.scenes, assetsDir, exec, log, narrator);
 
     await writeFile(join(attemptDir, "SCRIPT.md"), scriptMarkdown(compositionInput, storyboard.styleNotes));
