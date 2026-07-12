@@ -94,6 +94,7 @@ ${research.context ? `- Company context: ${research.context}` : ""}
 ${styleBrief.slice(0, 900)}
 
 ## Rules
+- First understand WHY the reference works: who it targets, the emotion it drives, its persuasion strategy (pain-agitate-solve / aspiration / social-proof-led...). Set "concept" to the TRANSLATED intent for this product's audience — carry the why, not just the shape.
 - First 5 seconds must make a concrete promise or expose a concrete pain.
 - Every claim must be grounded in the captured site copy above. No invented features.
 - Voiceover lines are conversational, punchy, 4-14 words each. They are read aloud by TTS.
@@ -102,7 +103,7 @@ ${styleBrief.slice(0, 900)}
 - First scene must be kind "hook", last must be "cta". Use 2-3 "ui" scenes — the real UI is the star.
 - Total duration 28-45 seconds. Scene seconds between 3 and 8.${inputs.beatMap ? `
 - STRUCTURE CONTRACT: follow the reference beat map act-for-act, in order, each within ±15% of its length: ${inputs.beatMap.acts.map((act) => `${act.role}@${act.targetSeconds}s`).join(" → ")}. The reference cuts fastest in third ${inputs.beatMap.paceRankByThird[0] ?? "?"} — your scene density must peak there too.` : ""}
-- lumenfallShots: at most 1, for the hook scene — a wordless cinematic AI-video prompt (explicitly say: no on-screen text, no logos, no people) that matches the brand colors and product mood. Optional modelHint: one of kling-v3, veo-3.1-fast, sora-2, pixverse-v5.6, or omit for auto.
+- lumenfallShots: at most 1, for the hook scene — a cinematic AI-video prompt that expresses the film's CONCEPT. It may cast real people (the product's actual user persona in their real environment), real-world scenes, or abstract motion — whatever the reference's world calls for. Hard rules: no on-screen text/words, no logos or brands, no fake product UI. Prefer sora-2 for realistic humans, kling-v3 for cinematic scenes; or omit modelHint for auto.
 
 ## Output
 Reply with ONLY a JSON object, no prose, no markdown fences:
@@ -164,7 +165,14 @@ Static screenshots read as screen grabs; REBUILT UI reads as an agency productio
 - \`analysis/BREAKDOWN.md\`, \`analysis/style-brief.md\`, \`analysis/beats.json\`, \`analysis/contact-sheet.png\`, \`analysis/keyframes/\` — frame-by-frame deconstruction of the client's inspiration video (arc: ${beats.arc ?? "unknown"}, ${beats.meta?.duration ?? "?"}s). Transfer its structure and pacing, never its words, footage, or branding.
 
 ${beatMapContract(inputs.beatMap)}
-## Phase 0 — REQUIRED style ledger (do this before any planning)
+## Phase 0a — REQUIRED concept brief: understand the WHY before anything else
+The beat map above is the skeleton; this is the soul. Watch the reference through its artifacts (contact sheet, keyframes, transcript, pacing) and write \`analysis/concept-brief.md\` answering:
+1. **What is this launch video really doing?** Who is it aimed at, what single emotion does it drive (fear of falling behind? relief? aspiration? credibility?), and what persuasion strategy carries it (pain-agitate-solve, aspiration-first, social-proof-led, founder-trust, demo-as-proof...)?
+2. **Why does its structure work?** Why THIS hook, why does the pace peak where it does, why that CTA mood? What does each act DO to the viewer, not just show them?
+3. **The translation:** what is the analogous concept for ${research.title} and ITS audience? Not "copy the shape" — carry the INTENT. End with a one-line concept statement for your film (e.g. "the same dread-to-relief arc, but the dread is claim denials and the relief is one connected patient flow").
+Every scene you then plan must serve this translated concept — the beat map tells you WHEN, the concept brief tells you WHY.
+
+## Phase 0b — REQUIRED style ledger (do this before any planning)
 The mechanical breakdown cannot SEE. You can. Open and LOOK at \`analysis/contact-sheet.png\` (and keyframes for the Hook, mid-film, and CTA beats), then write \`analysis/style-ledger.md\` describing the reference's visual language strictly in this closed vocabulary:
 - **Shot blueprints** (what each act uses): kinetic-type-beats, typewriter-reveal, cursor-ui-demo, device-surface-showcase, dataviz-countup, logo-assemble-lockup, grid-card-assemble, constellation-hub, comparison-split, titlecard-reveal, spatial-pan-stations.
 - **Motion moves** (name the 3-5 signature moves you observe): word-swap, per-word stagger, kinetic beat-slam, type-on with caret, value-scaled counter, SVG self-draw, push camera, focus camera, drift camera, zoom-to-target, cursor tracking, mask wipe, cascade reveal, count-up.
@@ -182,7 +190,7 @@ You have the HyperFrames skill suite installed natively. LOAD AND FOLLOW your **
 
 ## Tools available
 - **HyperFrames** (primary renderer/editor): \`npx hyperframes init <dir>\`, author \`index.html\` composition (GSAP timeline, data-start/data-duration/data-track-index clips; local mp4s go in \`<video>\` elements with class="clip" — framework owns playback). \`npx hyperframes check <dir>\`, \`npx hyperframes render <dir> -o launchreel.mp4 --quality standard\`.
-- **Lumenfall** (AI shots): \`curl -X POST https://api.lumenfall.ai/openai/v1/videos -H "Authorization: Bearer $LUMENFALL_API_KEY" -H "content-type: application/json" -d '{"model":"...","prompt":"...","seconds":"4","aspect_ratio":"${format === "portrait" ? "9:16" : "16:9"}"}'\` then poll \`GET /videos/<id>\` until completed and download output.url. Models: kling-v3, veo-3.1-fast, sora-2, pixverse-v5.6, veo-3.1-lite. HARD BUDGET: $2.50 total. Prompts must be wordless (no text/logos/people), matched to brand colors/mood. If a generation errors or exceeds ~6 minutes of polling, fall back to gradient treatment and note it in SCRIPT.md.
+- **Lumenfall** (AI shots): \`curl -X POST https://api.lumenfall.ai/openai/v1/videos -H "Authorization: Bearer $LUMENFALL_API_KEY" -H "content-type: application/json" -d '{"model":"...","prompt":"...","seconds":"4","aspect_ratio":"${format === "portrait" ? "9:16" : "16:9"}"}'\` then poll \`GET /videos/<id>\` until completed and download output.url. Models: kling-v3, veo-3.1-fast, sora-2, pixverse-v5.6, veo-3.1-lite. HARD BUDGET: $2.50 total. Cast shots to serve the concept brief: real people are welcome (the product's actual user persona — a physical therapist mid-session, a founder at a whiteboard, hands on a keyboard at 2am), real-world scenes, or abstract motion — match the WORLD of the reference (live-action reference → realistic human shots via sora-2; motion-graphics reference → abstract via kling-v3/pixverse). Hard rules: no on-screen text/words, no logos or brands, no fake product UI; keep brand colors present in grade or wardrobe where natural. If a generation errors or exceeds ~6 minutes of polling, fall back to gradient treatment and note it in SCRIPT.md.
 - **Voiceover**: ELEVENLABS_API_KEY is set and funded — PREFER ElevenLabs. IMPORTANT: secret env values are REDACTED in your tool output, so \`printenv\`/\`echo\` will look empty — do NOT probe them; they expand fine inside commands. Judge success by HTTP status and output file size. Per scene:
   \`curl -sf -o vo-1.mp3 -X POST "https://api.elevenlabs.io/v1/text-to-speech/pNInz6obpgDQGcFmaJgB?output_format=mp3_44100_128" -H "xi-api-key: $ELEVENLABS_API_KEY" -H "content-type: application/json" -d '{"text":"LINE","model_id":"eleven_multilingual_v2","voice_settings":{"stability":0.45,"similarity_boost":0.8}}'\`
   Voices: Adam pNInz6obpgDQGcFmaJgB (gravitas), Rachel 21m00Tcm4TlvDq8ikWAM (warm), Josh TxGEqnHWrfWFTfGW9XjX (driven), Antoni ErXwobaYiN019PkySvjV (even). Pick per mood. Only if the curl actually fails (non-zero exit / tiny file): GEMINI_API_KEY, then \`npx hyperframes tts "line" -o vo.wav -v af_heart\`.
